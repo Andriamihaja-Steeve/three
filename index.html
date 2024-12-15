@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <title>Earth Animation</title>
+  <style>
+    body {
+        margin: 0;
+        height: 8000vh;
+        background-color: black;
+    }
+    canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+    #text-container {
+        position: fixed;
+        bottom: 5%;
+        left: 10%;
+        color: #f2f2f2;
+        font-family: "Lato", sans-serif;
+        z-index: 10;
+        max-width: 50%;
+    }
+    #text-container h2{
+        font-size:48px;
+        letter-spacing: 3px;
+        font-weight: 300;
+        text-transform: uppercase;
+        text-shadow: 1px 0 6px rgba(0,0,0,.4);
+    }
+    #text-container p{
+        font-size: 19px;
+        line-height: 27px;
+        text-align: justify;
+        text-shadow: 1px 0 6px rgba(0,0,0,.4);
+    }
+    #earth-text, #sun-text, #galaxy-button,#titan-description, #saturn-description {
+        opacity: 1;
+        transition: all 1s ease-out;
+        position: relative;
+        bottom: 0;
+    }
+
+    #earth-text.hidden, #sun-text.hidden, #galaxy-button.hidden,#titan-description.hidden, #saturn-description.hidden {
+        opacity: 0;
+        position: absolute;
+        bottom: -100%;
+    }
+
+    button {
+        padding: 10px 20px;
+        background-color: #333;
+        color: #f2f2f2;
+        font-size: 19px;
+        border: none;
+        cursor: pointer;
+    }
+
+    button:hover {
+    background-color: #555;
+    }
+    
+  </style>
+</head>
+<body>
+    <div id="text-container">
+        <div id="earth-text">
+            <h2>La Terre, notre maison</h2>
+            <p>Contrairement à ce que certains cons pensent, la Terre n'est pas plate. Elle a la forme d'une sphère légèrement aplatie aux pôles, ce qui est dû à sa rotation. Ce phénomène, appelé oblongité, joue un rôle crucial dans la distribution de la chaleur sur notre planète et influence la trajectoire des océans et des vents.</p>
+        </div>
+        <div id="sun-text" class="hidden">
+            <h2>Le soleil</h2>
+            <p>Le Soleil, à environ 150 millions de kilomètres de la Terre, est une gigantesque boule de gaz en fusion. Cette distance idéale permet à notre planète de bénéficier de la chaleur et de la lumière nécessaires à la vie. Il est la source d'énergie principale pour la Terre, régulant le climat et les cycles biologiques.</p>
+        </div>
+        <div id="galaxy-button" class="hidden">
+            <h2>La révolution</h2>
+            <p>En 1543, Copernic a révolutionné notre vision du cosmos en prouvant que la Terre tourne autour du Soleil. Contrairement à la croyance populaire de l'époque, ce modèle héliocentrique est désormais la base de notre compréhension du système solaire, avec la Terre et les autres planètes suivant des orbites régulières autour du Soleil.</p>
+            <button>Voir une autre planète</button>
+        </div>
+        <div id="saturn-description" class="hidden">
+            <h2>Saturne</h2>
+            <p>Saturne est la sixième planète du système solaire, célèbre pour ses impressionnants anneaux. Composée principalement de gaz, elle possède également un grand nombre de lunes, dont Titan, sa plus grande lune. Saturne est un géant gazeux avec une faible densité, ce qui la rend unique parmi les planètes du système solaire.</p>
+          </div>
+          
+          <div id="titan-description" class="hidden">
+            <h2>Titan</h2>
+            <p>Titan est la plus grande lune de Saturne et possède une atmosphère dense, unique dans le système solaire. Son sol est couvert de lacs de méthane liquide, et sa surface est un mystère fascinant pour les scientifiques. Titan est un monde étrange et l'un des endroits les plus intrigants du système solaire.</p>
+          </div>
+    </div>
+      
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
