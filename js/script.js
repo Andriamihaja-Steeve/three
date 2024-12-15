@@ -14,8 +14,8 @@ const sunText = document.getElementById('sun-text');
 const galaxyButton = document.getElementById('galaxy-button');
 const saturnDescription = document.getElementById('saturn-description');
 const titanDescription = document.getElementById('titan-description');
-let isTitanHovered = false;
 const scene = new THREE.Scene();
+let isTitanClicked = false;
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -83,7 +83,8 @@ let textState = 'earth';
 //gestion de saturne
 
 const saturnTexture = new THREE.TextureLoader().load('img/saturn.jpg');  // Texture de Saturne
-const ringTexture = new THREE.TextureLoader().load('img/saturn-ring.png');  // Texture des anneaux
+const ringTexture = new THREE.TextureLoader().load('img/saturn-ring.png'); 
+const titanTexture = new THREE.TextureLoader().load('img/titan.jpg'); // Texture des anneaux
 
 // Création de Saturne avec la texture
 const saturnGeometry = new THREE.SphereGeometry(10, 32, 32);  // Taille de Saturne
@@ -107,7 +108,7 @@ scene.add(rings);
 
 // Création de Titan (la lune de Saturne)
 const titanGeometry = new THREE.SphereGeometry(1.5, 16, 16);  // Taille de Titan
-const titanMaterial = new THREE.MeshBasicMaterial({ color: 0xAAAAAA });  // Couleur grise
+const titanMaterial = new THREE.MeshBasicMaterial({ map: titanTexture });
 const titan = new THREE.Mesh(titanGeometry, titanMaterial);
 
 // Position initiale de Titan
@@ -226,7 +227,7 @@ let isOnSaturn = false; // Indique si l'utilisateur est dans la zone de Saturne
 const rotationSpeedFactor = 0.005;
 
 window.addEventListener('mousemove', (event) => {
-  if (isOnSaturn) {
+  if (isOnSaturn&&!isTitanClicked) {
     // Calculer le delta de mouvement de la souris
     const deltaX = (event.clientX - lastMousePosition.x) * rotationSpeedFactor;
     const deltaY = (event.clientY - lastMousePosition.y) * rotationSpeedFactor;
@@ -357,19 +358,64 @@ window.addEventListener('scroll', () => {
     galaxyButton.classList.remove('hidden');
   }
 });
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isTitanHovered = false;
+
+// Fonction de gestion du mouvement de la souris
+window.addEventListener('mousemove', (event) => {
+  // Calculer les coordonnées normalisées de la souris (-1 à 1)
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+
+// Fonction pour vérifier si la souris survole Titan
+function checkMouseHover() {
+  // Créer un rayon à partir de la caméra et de la souris
+  raycaster.setFromCamera(mouse, camera);
+
+  // Vérifier l'intersection entre le rayon et l'objet Titan
+  const intersects = raycaster.intersectObject(titan);
+
+  // Si Titan est intersecté par le rayon, la souris est dessus
+  isTitanHovered = intersects.length > 0;
+}
 
 // Fonction pour gérer l'animation de Titan et sa révolution
 let titanAngle = 0;
 function animateTitan() {
-  if (!isTitanHovered) {
+  checkMouseHover();
+  if (!isTitanHovered&&!isTitanClicked) {
+    document.body.style.cursor = 'auto';
     const revolutionSpeed = 0.005;
     titan.position.x = 250 + titanOrbitRadius * Math.cos(titanAngle); 
     titan.position.z = titanOrbitRadius * Math.sin(titanAngle);
     titanAngle += revolutionSpeed; // Vitesse de révolution autour de Saturne
+  }else{
+    document.body.style.cursor = 'pointer';
   }
   requestAnimationFrame(animateTitan);
 }
 animateTitan();
+
+window.addEventListener('click', (event) => {
+  // Créer un rayon à partir de la caméra et de la souris
+  raycaster.setFromCamera(mouse, camera);
+
+  // Vérifier si la souris clique sur Titan
+  const intersects = raycaster.intersectObject(titan);
+
+  // Si Titan est cliqué
+  if (intersects.length > 0) {
+    isTitanClicked = true;
+    console.log("eto")
+    // Centrer la caméra sur Titan
+    const targetPosition = new THREE.Vector3().copy(titan.position).add(new THREE.Vector3(0, 0, 10)); // Ajuster la position de la caméra
+    camera.position.lerp(targetPosition, 0.1);
+      titanDescription.classList.remove('hidden');
+      saturnDescription.classList.add('hidden');
+  }
+});
 // Animation continue
 function animate() {
   requestAnimationFrame(animate);
