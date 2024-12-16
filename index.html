@@ -11,8 +11,9 @@
   <style>
     body {
         margin: 0;
-        height: 8000vh;
+        height: 100vh;
         background-color: black;
+        font-family: "Lato", sans-serif;
     }
     canvas {
         position: fixed;
@@ -27,7 +28,6 @@
         bottom: 5%;
         left: 10%;
         color: #f2f2f2;
-        font-family: "Lato", sans-serif;
         z-index: 10;
         max-width: 50%;
     }
@@ -46,7 +46,7 @@
     }
     #earth-text, #sun-text, #galaxy-button,#titan-description, #saturn-description {
         opacity: 1;
-        transition: all 1s ease-out;
+        transition: all 2s ease-out;
         position: relative;
         bottom: 0;
     }
@@ -69,10 +69,40 @@
     button:hover {
     background-color: #555;
     }
-    
+    #return-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10;
+        padding: 10px 15px;
+        background-color: #222;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    #return-button.hidden {
+        display: none;
+    }
+    #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 48px;
+        z-index: 9999;
+    }
   </style>
 </head>
 <body>
+    <div id="loading-screen">Chargement...</div>
     <div id="text-container">
         <div id="earth-text">
             <h2>La Terre, notre maison</h2>
@@ -90,14 +120,14 @@
         <div id="saturn-description" class="hidden">
             <h2>Saturne</h2>
             <p>Saturne est la sixième planète du système solaire, célèbre pour ses impressionnants anneaux. Composée principalement de gaz, elle possède également un grand nombre de lunes, dont Titan, sa plus grande lune. Saturne est un géant gazeux avec une faible densité, ce qui la rend unique parmi les planètes du système solaire.</p>
-          </div>
-          
-          <div id="titan-description" class="hidden">
+        </div> 
+        <div id="titan-description" class="hidden">
             <h2>Titan</h2>
             <p>Titan est la plus grande lune de Saturne et possède une atmosphère dense, unique dans le système solaire. Son sol est couvert de lacs de méthane liquide, et sa surface est un mystère fascinant pour les scientifiques. Titan est un monde étrange et l'un des endroits les plus intrigants du système solaire.</p>
-          </div>
+        </div>
+        <button id="return-button" class="hidden">Revenir vers Saturne</button>
     </div>
-      
+    <script src="js/loading.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
     <script src="js/script.js"></script>
 </body>
