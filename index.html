@@ -33,12 +33,18 @@
             <h2>Titan</h2>
             <p>Titan est la plus grande lune de Saturne et possède une atmosphère dense, unique dans le système solaire. Son sol est couvert de lacs de méthane liquide, et sa surface est un mystère fascinant pour les scientifiques. Titan est un monde étrange et l'un des endroits les plus intrigants du système solaire.</p>
         </div>
+        <div id="enceladus-description" class="hidden">
+            <h2>Encelade</h2>
+            <p>Encelade est une lune glacée de Saturne, célèbre pour ses geysers d'eau qui s'échappent de fissures à sa surface. Ces jets proviennent d'un océan souterrain, rendant Encelade fascinante pour la recherche de vie.</p>
+        </div>
         <button id="return-button" class="hidden">Revenir vers Saturne</button>
     </div>
     <script src="js/loading.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
     <script src="js/smooth.min.js"></script>
     <script>
+        let smooth = 30;
+        let speed = 150;
         new SmoothScroll(document, speed, smooth);
     </script>
     <script src="js/script.js"></script>

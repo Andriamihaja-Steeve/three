@@ -8,16 +8,14 @@ const titanDescription = document.getElementById('titan-description');
 const returnButton = document.getElementById("return-button");
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-let isTitanHovered = false;
+const moons = []; 
 let originalCameraPosition = new THREE.Vector3();
 let originalCameraQuaternion = new THREE.Quaternion();
 let isOnSaturn = false;
-let isTitanClicked = false;
 let saturnTravelStarted = false;
 let returnToSunStarted = false; 
 let cameraStartPosition = new THREE.Vector3();
 let cameraStartQuaternion = new THREE.Quaternion();
-let titanAngle = 0;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -103,21 +101,39 @@ rings.rotation.x = Math.PI / 2 ;
 rings.position.set(450, 0, 0);
 scene.add(rings);
 
-const titanGeometry = new THREE.SphereGeometry(1.5, 16, 16);
-const titanMaterial = new THREE.MeshBasicMaterial({ map: titanTexture });
-const titan = new THREE.Mesh(titanGeometry, titanMaterial);
+// Fonction pour ajouter une lune
+function addMoon(texture, orbitRadius, descriptionElementId, moonSize = 1.5) {
+  const moonGeometry = new THREE.SphereGeometry(moonSize, 16, 16);
+  const moonMaterial = new THREE.MeshBasicMaterial({ map: texture });
+  const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 
-const titanOrbitRadius = 30;
-titan.position.set(350 + titanOrbitRadius, 0, 0);
+  // Définir l'orbite et l'angle initial
+  const moonData = {
+    mesh: moon,
+    orbitRadius: orbitRadius,
+    angle: 0,
+    isHovered: false,
+    isClicked: false,
+    descriptionElementId: descriptionElementId // Element HTML pour la description de la lune
+  };
 
-scene.add(titan);
+  // Ajouter la lune à la scène et au tableau des lunes
+  moon.position.set(450 + orbitRadius, 0, 0); // Position initiale
+  scene.add(moon);
+  moons.push(moonData);
+}
+
+// Exemple d'ajout de Titan et Encelade
+addMoon(new THREE.TextureLoader().load('img/titan.jpg'), 30, 'titan-description', 1.5);
+addMoon(new THREE.TextureLoader().load('img/encelade.jpg'), 40, 'enceladus-description', 1);
 
 let lastMousePosition = { x: 0, y: 0 };
 
 const rotationSpeedFactor = 0.001;
 
 window.addEventListener('mousemove', (event) => {
-  if (isOnSaturn&&!isTitanClicked) {
+  let anyMoonClicked = moons.some(moonData => moonData.isClicked);
+  if (isOnSaturn&&!anyMoonClicked) {
     const deltaX = (event.clientX - lastMousePosition.x) * rotationSpeedFactor;
     const deltaY = (event.clientY - lastMousePosition.y) * rotationSpeedFactor;
     saturn.rotation.y += deltaX;
@@ -135,7 +151,8 @@ window.addEventListener('scroll', () => {
   const maxScroll = document.body.scrollHeight - window.innerHeight;
   const scrollFraction = scrollY / maxScroll;
   isOnSaturn = scrollFraction > 0.6;
-  if (isTitanClicked) return;
+  let anyMoonClicked = moons.some(moonData => moonData.isClicked);
+  if (anyMoonClicked) return;
   if (isOnSaturn) {
     lastMousePosition = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }
@@ -285,53 +302,104 @@ function travelToSun() {
 }
 //fontction global
 
-function animateTitan() {
-  checkMouseHover();
-  if (!isTitanHovered&&!isTitanClicked) {
+function animateMoons() {
+  let anyMoonHovered = false;
+
+  moons.forEach((moonData) => {
+    const { mesh, orbitRadius, angle } = moonData;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(mesh);
+    moonData.isHovered = intersects.length > 0;
+    if (moonData.isHovered) {
+      anyMoonHovered = true;
+      document.body.style.cursor = 'pointer';
+    }
+    const revolutionSpeed = moonData.isHovered ? 0.0015 : 0.005;
+    if (!moonData.isClicked) {
+      mesh.position.x = 450 + orbitRadius * Math.cos(angle);
+      mesh.position.z = orbitRadius * Math.sin(angle);
+      moonData.angle += revolutionSpeed;
+    }
+  });
+
+  if (!anyMoonHovered) {
     document.body.style.cursor = 'auto';
-    const revolutionSpeed = 0.005;
-    titan.position.x = 450 + titanOrbitRadius * Math.cos(titanAngle); 
-    titan.position.z = titanOrbitRadius * Math.sin(titanAngle);
-    titanAngle += revolutionSpeed; 
-  }else{
-    document.body.style.cursor = 'pointer';
   }
-  requestAnimationFrame(animateTitan);
-}
-animateTitan();
 
-function smoothZoom(targetPosition, duration = 1.5, lookAtTarget = null) {
-  const startPosition = new THREE.Vector3().copy(camera.position);
-  const startTime = performance.now();
-
-  function animateZoom() {
-    const elapsedTime = (performance.now() - startTime) / 1000;
-    const t = Math.min(elapsedTime / duration, 1);
-    camera.position.lerpVectors(startPosition, targetPosition, t);
-    if (lookAtTarget) {
-      camera.lookAt(lookAtTarget);
-    }
-    renderer.render(scene, camera);
-    if (t < 1) {
-      requestAnimationFrame(animateZoom);
-    }
-  }
-  animateZoom();
+  requestAnimationFrame(animateMoons);
 }
+
+animateMoons();
+
+window.addEventListener("click", (event) => {
+  moons.forEach((moonData) => {
+    if (moonData.isClicked) return; // Si la lune est déjà cliquée, ignorer
+
+    const mouse = new THREE.Vector2(
+      (event.clientX / window.innerWidth) * 2 - 1,
+      -(event.clientY / window.innerHeight) * 2 + 1
+    );
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(moonData.mesh);
+
+    if (intersects.length > 0) {
+      // Sauvegarder les informations de la caméra
+      originalCameraPosition = camera.position.clone();
+      originalCameraQuaternion = camera.quaternion.clone();
+
+      // Calculer la position de la caméra pour zoomer sur la lune
+      const directionToSaturn = new THREE.Vector3().subVectors(
+        saturn.position,
+        moonData.mesh.position
+      ).normalize();
+      const distanceFromMoon = 20;
+      const verticalOffset = 3;
+      const horizontalOffset = 8;
+      const targetPosition = new THREE.Vector3().addVectors(
+        moonData.mesh.position,
+        directionToSaturn.multiplyScalar(-distanceFromMoon)
+      );
+      targetPosition.y += verticalOffset;
+      targetPosition.x += horizontalOffset;
+
+      // Zoom et centrage sur la lune
+      smoothZoom(targetPosition, 1.2, moonData.mesh.position);
+
+      moonData.isClicked = true;
+      // Gérer les descriptions
+      moons.forEach((otherMoonData) => {
+        document.getElementById(otherMoonData.descriptionElementId).classList.add("hidden");
+      });
+      document.getElementById(moonData.descriptionElementId).classList.remove("hidden");
+      returnButton.classList.remove("hidden");
+      saturnDescription.classList.add('hidden');
+    }
+  });
+});
+
 function returnToSaturn() {
-  if (!isTitanClicked) return;
-  // Effectuer le zoom inverse pour revenir à la position de départ
-  smoothZoom(originalCameraPosition, 1.5, saturn.position); // Centrer sur Saturne après le zoom inverse
-  camera.quaternion.copy(originalCameraQuaternion);
+  moons.forEach((moonData) => {
+    if (!moonData.isClicked) return;
 
-  // Afficher les bonnes descriptions et boutons
-  titanDescription.classList.add("hidden");
-  returnButton.classList.add("hidden");
-  saturnDescription.classList.remove("hidden");
+    smoothZoom(originalCameraPosition, 1.5, saturn.position); // Zoom inverse pour revenir à Saturne
+    camera.quaternion.copy(originalCameraQuaternion);
 
-  // Réinitialiser l'état
-  isTitanClicked = false;
+    // Masquer la description de la lune
+    document.getElementById(moonData.descriptionElementId).classList.add("hidden");
+    returnButton.classList.add("hidden");
+    saturnDescription.classList.remove("hidden");
+
+    moonData.isClicked = false;
+  });
 }
+returnButton.addEventListener("click", returnToSaturn);
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    returnToSaturn();
+  }
+});
 
 function disableScroll() {
   document.body.style.overflow = 'hidden';
@@ -358,55 +426,28 @@ window.addEventListener('mousemove', (event) => {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 });
-function checkMouseHover() {
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(titan);
-  isTitanHovered = intersects.length > 0;
+
+
+function smoothZoom(targetPosition, duration = 1.5, lookAtTarget = null, callback) {
+  const startPosition = new THREE.Vector3().copy(camera.position);
+  const startTime = performance.now();
+
+  function animateZoom() {
+    const elapsedTime = (performance.now() - startTime) / 1000;
+    const t = Math.min(elapsedTime / duration, 1);
+    camera.position.lerpVectors(startPosition, targetPosition, t);
+    if (lookAtTarget) {
+      camera.lookAt(lookAtTarget);
+    }
+    renderer.render(scene, camera);
+    if (t < 1) {
+      requestAnimationFrame(animateZoom);
+    } else if (callback) {
+      callback();
+    }
+  }
+  animateZoom();
 }
-
-//clique sur titan
-window.addEventListener("click", (event) => {
-  if (isTitanClicked) return;
-  const mouse = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
-  );
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(titan);
-  if (intersects.length > 0) {
-    originalCameraPosition = camera.position.clone();
-    originalCameraQuaternion = camera.quaternion.clone();
-
-    const directionToSaturn = new THREE.Vector3().subVectors(
-      saturn.position,
-      titan.position
-    ).normalize();
-    const distanceFromTitan = 20;
-    const verticalOffset = 3;
-    const horizontalOffset = 8;
-    const targetPosition = new THREE.Vector3().addVectors(
-      titan.position,
-      directionToSaturn.multiplyScalar(-distanceFromTitan)
-    );
-    targetPosition.y += verticalOffset;
-    targetPosition.x += horizontalOffset;
-
-    smoothZoom(targetPosition, 1.2, titan.position); // Zoom et centrage sur Titan
-    isTitanClicked = true;
-    returnButton.classList.remove("hidden");
-    titanDescription.classList.remove('hidden');
-    saturnDescription.classList.add('hidden');
-  }
-});
-
-returnButton.addEventListener("click", returnToSaturn);
-
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    returnToSaturn();
-  }
-});
 
 function animate() {
   requestAnimationFrame(animate);
