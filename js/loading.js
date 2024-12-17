@@ -35,7 +35,7 @@ function loadResources() {
 loadResources().then(() => {
     setTimeout(() => {
         window.scrollTo(0, 0);
-        document.body.style.height = '2500vh';
+        document.body.style.height = '3500vh';
         document.getElementById('loading-screen').style.display = 'none';
     }, 1000);
 });

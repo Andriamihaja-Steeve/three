@@ -6,10 +6,18 @@ const galaxyButton = document.getElementById('galaxy-button');
 const saturnDescription = document.getElementById('saturn-description');
 const titanDescription = document.getElementById('titan-description');
 const returnButton = document.getElementById("return-button");
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isTitanHovered = false;
 let originalCameraPosition = new THREE.Vector3();
 let originalCameraQuaternion = new THREE.Quaternion();
 let isOnSaturn = false;
 let isTitanClicked = false;
+let saturnTravelStarted = false;
+let returnToSunStarted = false; 
+let cameraStartPosition = new THREE.Vector3();
+let cameraStartQuaternion = new THREE.Quaternion();
+let titanAngle = 0;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -35,14 +43,14 @@ shadowPlane.receiveShadow = true;
 scene.add(shadowPlane);
 
 // Création du Soleil
-const sunGeometry = new THREE.SphereGeometry(30, 32, 32);
+const sunGeometry = new THREE.SphereGeometry(55, 32, 32);
 const sunTexture = new THREE.TextureLoader().load('img/sun.jpg');
 const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 const sun = new THREE.Mesh(sunGeometry, sunMaterial);
 scene.add(sun);
 
 // Position initiale du Soleil à droite de la Terre
-sun.position.set(80, 0, 0);
+sun.position.set(140, 0, 0);
 
 // Ajout d'une lumière directionnelle simulant le Soleil
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -70,7 +78,6 @@ window.addEventListener('resize', () => {
 let earthOrbitAngle = 0; 
 let revolutionStarted = false;
 let initialEarthOffset
-let lastScrollY = 0;
 let textState = 'earth';
 //gestion de saturne
 
@@ -78,13 +85,13 @@ const saturnTexture = new THREE.TextureLoader().load('img/saturn.jpg');
 const ringTexture = new THREE.TextureLoader().load('img/saturn-ring.png'); 
 const titanTexture = new THREE.TextureLoader().load('img/titan.jpg'); 
 
-const saturnGeometry = new THREE.SphereGeometry(10, 32, 32); 
+const saturnGeometry = new THREE.SphereGeometry(15, 32, 32); 
 const saturnMaterial = new THREE.MeshBasicMaterial({ map: saturnTexture });
 const saturn = new THREE.Mesh(saturnGeometry, saturnMaterial);
-saturn.position.set(350, 0, 0);
+saturn.position.set(450, 0, 0);
 scene.add(saturn);
 
-const ringGeometry = new THREE.RingGeometry(12, 20, 64);
+const ringGeometry = new THREE.RingGeometry(17, 30, 64);
 const ringMaterial = new THREE.MeshBasicMaterial({ 
   map: ringTexture, 
   side: THREE.DoubleSide, 
@@ -93,7 +100,7 @@ const ringMaterial = new THREE.MeshBasicMaterial({
 });  
 const rings = new THREE.Mesh(ringGeometry, ringMaterial);
 rings.rotation.x = Math.PI / 2 ;
-rings.position.set(350, 0, 0);
+rings.position.set(450, 0, 0);
 scene.add(rings);
 
 const titanGeometry = new THREE.SphereGeometry(1.5, 16, 16);
@@ -104,103 +111,6 @@ const titanOrbitRadius = 30;
 titan.position.set(350 + titanOrbitRadius, 0, 0);
 
 scene.add(titan);
-
-function travelToSaturn() {
-  const travelDuration = 5000;
-  const startPosition = camera.position.clone();
-  const startZoom = camera.zoom;
-  const startTime = performance.now();
-
-  // Points pour la courbe Bezier
-  const controlPoint1 = new THREE.Vector3(100, 50, 0);
-  const controlPoint2 = new THREE.Vector3(200, -50, 0);
-  const targetPosition = new THREE.Vector3(250, 0, 0);
-  const targetLookAt = saturn.position.clone();
-  const initialQuaternion = camera.quaternion.clone();
-  const targetQuaternion = new THREE.Quaternion();
-  const upVector = new THREE.Vector3(0, 1, 0); 
-  targetQuaternion.setFromRotationMatrix(
-    new THREE.Matrix4().lookAt(targetPosition, targetLookAt, upVector)
-  );
-
-  function animateTravel() {
-    const elapsedTime = performance.now() - startTime;
-    const progress = Math.min(elapsedTime / travelDuration, 1);
-    const currentPosition = new THREE.Vector3();
-    currentPosition.copy(startPosition)
-      .multiplyScalar(Math.pow(1 - progress, 3))
-      .add(controlPoint1.clone().multiplyScalar(3 * progress * Math.pow(1 - progress, 2)))
-      .add(controlPoint2.clone().multiplyScalar(3 * Math.pow(progress, 2) * (1 - progress)))
-      .add(targetPosition.clone().multiplyScalar(Math.pow(progress, 3)));
-
-    camera.position.copy(currentPosition);
-    THREE.Quaternion.slerp(initialQuaternion, targetQuaternion, camera.quaternion, progress);
-
-    // Zoom fluide
-    camera.zoom = THREE.Math.lerp(startZoom, 5.2, progress);
-
-    camera.updateProjectionMatrix();
-
-    if (progress < 1) {
-      requestAnimationFrame(animateTravel); 
-    } else {
-      camera.position.copy(targetPosition);
-      camera.lookAt(targetLookAt);
-      camera.zoom = 5.2;
-      camera.updateProjectionMatrix();
-    }
-  }
-
-  animateTravel();
-}
-
-let saturnTravelStarted = false;
-let returnToSunStarted = false; 
-
-function travelToSun() {
-  const targetPosition = new THREE.Vector3(0, 0, 20); 
-  const travelDuration = 2000;
-  const targetZoom = 1;
-  const startPosition = camera.position.clone(); 
-  const startZoom = camera.zoom;
-  const startTime = performance.now();
-
-  // Fonction d'animation
-  function animateTravel() {
-    const elapsedTime = performance.now() - startTime;
-    const progress = Math.min(elapsedTime / travelDuration, 1)
-    camera.position.lerpVectors(startPosition, targetPosition, progress);
-    camera.zoom = THREE.Math.lerp(startZoom, targetZoom, progress);
-    const currentLookAt = new THREE.Vector3().lerpVectors(saturn.position, sun.position, progress);
-    camera.lookAt(currentLookAt);
-
-    camera.updateProjectionMatrix();
-
-    if (progress < 1) {
-      requestAnimationFrame(animateTravel);
-    } else {
-      saturnTravelStarted = false;
-      returnToSunStarted = false; 
-      camera.lookAt(sun.position);
-      camera.updateProjectionMatrix();
-      saturnTravelStarted = false;
-      returnToSunStarted = false; 
-    }
-  }
-
-  animateTravel();
-}
-
-galaxyButton.querySelector('button').addEventListener('click', () => {
-  if (!saturnTravelStarted) {
-    travelToSaturn();
-    saturnTravelStarted = true;
-  }
-  const targetScrollY = (0.61 * (document.body.scrollHeight - window.innerHeight)) + 1;
-  document.documentElement.scrollTop = targetScrollY;
-  saturnDescription.classList.remove('hidden');
-  galaxyButton.classList.add('hidden');
-});
 
 let lastMousePosition = { x: 0, y: 0 };
 
@@ -215,11 +125,6 @@ window.addEventListener('mousemove', (event) => {
     saturn.rotation.z += deltaX;
     rings.rotation.y += deltaX;
     rings.rotation.x += deltaY;
-    titan.rotation.y += deltaX;
-    const revolutionSpeed = 0.01;
-    titan.position.x = Math.cos(Date.now() * revolutionSpeed) * 10;
-    titan.position.z = Math.sin(Date.now() * revolutionSpeed) * 10; 
-
     lastMousePosition.x = event.clientX;
     lastMousePosition.y = event.clientY;
   }
@@ -234,55 +139,48 @@ window.addEventListener('scroll', () => {
   if (isOnSaturn) {
     lastMousePosition = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }
-  earth.rotation.y += 0.05;
-  earth.rotation.x += 0.001;
-  if (scrollFraction <= 0.4) {
-    const earthScale = 1 - scrollFraction * 1;
-    earth.scale.set(earthScale, earthScale, earthScale);
-    camera.position.z = 15 + scrollFraction * 100;
-  }
+  if (scrollFraction <= 0.6) {
+    const maxRotationY = Math.PI * 10;
+    const maxRotationX = 0.4;
+    earth.rotation.y = scrollFraction * maxRotationY;
+    earth.rotation.x = scrollFraction * maxRotationX;
+    if (scrollFraction <= 0.4)
+      camera.position.z = 15 + scrollFraction * 400;
 
-  if (scrollFraction > 0.2 && scrollY > lastScrollY && scrollFraction <=4) {
-    console.log("en bas")
-    const progressToCenterSun = (scrollFraction - 0.2) * 10;
-    camera.position.x = THREE.Math.lerp(camera.position.x, sun.position.x, progressToCenterSun * 0.02);
-    camera.position.y = THREE.Math.lerp(camera.position.y, sun.position.y, progressToCenterSun * 0.02);
-  }
-
-  if (scrollFraction <= 0.2 && scrollY < lastScrollY) {
-    console.log("en haut")
-    const progressToCenterEarth = (0.2 - scrollFraction) * 10;
-    camera.position.x = THREE.Math.lerp(camera.position.x, earth.position.x, progressToCenterEarth * 0.02);
-    camera.position.y = THREE.Math.lerp(camera.position.y, earth.position.y, progressToCenterEarth * 0.02);
-    camera.position.z = THREE.Math.lerp(camera.position.z, 15, progressToCenterEarth * 0.01);
-  }
-
-  if (scrollFraction > 0.4 && scrollFraction <= 0.6) {
-    if (!revolutionStarted) {
-      initialEarthOffset = earth.position.clone().sub(sun.position);
-      revolutionStarted = true;
+    if (scrollFraction > 0.2 && scrollFraction <= 0.4) {
+      const progressToCenterSun = (scrollFraction - 0.2) / 0.2;
+      const accelerationFactor = Math.pow(progressToCenterSun, 2);
+      camera.position.x = THREE.Math.lerp(0, sun.position.x, accelerationFactor);
+      camera.position.y = THREE.Math.lerp(0, sun.position.y, accelerationFactor);
     }
-    const deltaAngle = 0.03;
-    const direction = scrollY > lastScrollY ? 1 : -1;
-    earthOrbitAngle += deltaAngle * direction;
-    const cosAngle = Math.cos(earthOrbitAngle);
-    const sinAngle = Math.sin(earthOrbitAngle);
-
-    earth.position.x = sun.position.x + initialEarthOffset.x * cosAngle - initialEarthOffset.z * sinAngle;
-    earth.position.z = sun.position.z + initialEarthOffset.x * sinAngle + initialEarthOffset.z * cosAngle;
-    earth.position.y = sun.position.y;
-  } else if (revolutionStarted) {
-    const progressToInitial = (0.4 - scrollFraction) / 0.2;
-    earth.position.x = THREE.Math.lerp(earth.position.x, initialEarthOffset.x + sun.position.x, progressToInitial);
-    earth.position.z = THREE.Math.lerp(earth.position.z, initialEarthOffset.z + sun.position.z, progressToInitial);
-    earth.position.y = sun.position.y;
-
-    if (scrollFraction <= 0.4) {
-      revolutionStarted = false;
-      earthOrbitAngle = 0;
+    if (scrollFraction > 0.4 && scrollFraction <= 0.6) {
+      if (!revolutionStarted) {
+          initialEarthOffset = earth.position.clone().sub(sun.position);
+          revolutionStarted = true;
+      }
+      const revolutionProgress = (scrollFraction - 0.4) / 0.2;
+      const deltaAngle = Math.PI * 2 * revolutionProgress;
+      const cosAngle = Math.cos(deltaAngle);
+      const sinAngle = Math.sin(deltaAngle);
+      earth.position.x = sun.position.x + initialEarthOffset.x * cosAngle - initialEarthOffset.z * sinAngle;
+      earth.position.z = sun.position.z + initialEarthOffset.x * sinAngle + initialEarthOffset.z * cosAngle;
+      earth.position.y = sun.position.y;
+    }
+    if (scrollFraction >= 0.4 && saturnTravelStarted && !returnToSunStarted) {
+      travelToSun();
+      returnToSunStarted = true;
+      saturnDescription.classList.add('hidden');
+      galaxyButton.classList.remove('hidden');
     }
   }
-
+  if (scrollFraction > 0.6 && !saturnTravelStarted) {
+    travelToSaturn();
+    saturnDescription.classList.remove('hidden');
+    galaxyButton.classList.add('hidden');
+    saturnTravelStarted = true;
+  }
+  //gestion des textes
+  
   if (scrollFraction <= 0.2 && textState === 'earth') {
     sunText.classList.add('hidden');
     galaxyButton.classList.add('hidden');
@@ -302,43 +200,97 @@ window.addEventListener('scroll', () => {
     sunText.classList.remove('hidden');
     textState = 'sun';
   }
-
-  lastScrollY = scrollY;
-  if (scrollFraction > 0.6 && !saturnTravelStarted) {
-    travelToSaturn();
-    saturnDescription.classList.remove('hidden');
-    galaxyButton.classList.add('hidden');
-    saturnTravelStarted = true;
-  }
-
-  if (scrollFraction >= 0.4 && scrollFraction <= 0.6 && saturnTravelStarted && !returnToSunStarted) {
-    travelToSun();
-    returnToSunStarted = true;
-    saturnDescription.classList.add('hidden');
-    galaxyButton.classList.remove('hidden');
-  }
 });
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let isTitanHovered = false;
 
-window.addEventListener('mousemove', (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-});
-function checkMouseHover() {
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(titan);
-  isTitanHovered = intersects.length > 0;
+
+function travelToSaturn() {
+  disableScroll();
+  const travelDuration = 5000;
+  const startPosition = camera.position.clone();
+  const startZoom = camera.zoom;
+  const startTime = performance.now();
+  // Mémorise la position initiale de la caméra avant le départ vers Saturne
+  cameraStartPosition.copy(startPosition);
+  cameraStartQuaternion.copy(camera.quaternion);
+  const controlPoint1 = new THREE.Vector3(100, 50, 0);
+  const controlPoint2 = new THREE.Vector3(200, -50, 0);
+  const targetPosition = new THREE.Vector3(250, 0, 0);
+  const targetLookAt = saturn.position.clone();
+  const initialQuaternion = camera.quaternion.clone();
+  const targetQuaternion = new THREE.Quaternion();
+  const upVector = new THREE.Vector3(0, 1, 0); 
+  targetQuaternion.setFromRotationMatrix(
+    new THREE.Matrix4().lookAt(targetPosition, targetLookAt, upVector)
+  );
+  function animateTravel() {
+    const elapsedTime = performance.now() - startTime;
+    const progress = Math.min(elapsedTime / travelDuration, 1);
+    const currentPosition = new THREE.Vector3();
+    currentPosition.copy(startPosition)
+      .multiplyScalar(Math.pow(1 - progress, 3))
+      .add(controlPoint1.clone().multiplyScalar(3 * progress * Math.pow(1 - progress, 2)))
+      .add(controlPoint2.clone().multiplyScalar(3 * Math.pow(progress, 2) * (1 - progress)))
+      .add(targetPosition.clone().multiplyScalar(Math.pow(progress, 3)));
+    camera.position.copy(currentPosition);
+    THREE.Quaternion.slerp(initialQuaternion, targetQuaternion, camera.quaternion, progress);
+    camera.zoom = THREE.Math.lerp(startZoom, 5.2, progress);
+    camera.updateProjectionMatrix();
+    if (progress < 1) {
+      requestAnimationFrame(animateTravel); 
+    } else {
+      camera.position.copy(targetPosition);
+      camera.lookAt(targetLookAt);
+      camera.zoom = 5.2;
+      camera.updateProjectionMatrix();
+      enableScroll();
+    }
+  }
+  animateTravel();
 }
 
-let titanAngle = 0;
+function travelToSun() {
+  disableScroll();
+  const travelDuration = 2000;
+  const startPosition = camera.position.clone(); 
+  const startQuaternion = camera.quaternion.clone();
+  const startZoom = camera.zoom;
+
+  const targetZoom = 1;
+  const startTime = performance.now();
+  const targetPosition = cameraStartPosition.clone();
+  const targetQuaternion = cameraStartQuaternion.clone();
+
+  function animateTravel() {
+    const elapsedTime = performance.now() - startTime;
+    const progress = Math.min(elapsedTime / travelDuration, 1);
+    const easedProgress = Math.pow(progress, 2) * (3 - 2 * progress);
+    camera.position.lerpVectors(startPosition, targetPosition, easedProgress);
+    THREE.Quaternion.slerp(startQuaternion, targetQuaternion, camera.quaternion, easedProgress);
+    camera.zoom = THREE.Math.lerp(startZoom, targetZoom, easedProgress);
+    camera.updateProjectionMatrix();
+    if (progress < 1) {
+      requestAnimationFrame(animateTravel);
+    } else {
+      camera.position.copy(targetPosition);
+      camera.quaternion.copy(targetQuaternion);
+      camera.zoom = targetZoom;
+      camera.updateProjectionMatrix();
+      saturnTravelStarted = false;
+      returnToSunStarted = false;
+      enableScroll();
+    }
+  }
+
+  animateTravel();
+}
+//fontction global
+
 function animateTitan() {
   checkMouseHover();
   if (!isTitanHovered&&!isTitanClicked) {
     document.body.style.cursor = 'auto';
     const revolutionSpeed = 0.005;
-    titan.position.x = 350 + titanOrbitRadius * Math.cos(titanAngle); 
+    titan.position.x = 450 + titanOrbitRadius * Math.cos(titanAngle); 
     titan.position.z = titanOrbitRadius * Math.sin(titanAngle);
     titanAngle += revolutionSpeed; 
   }else{
@@ -356,23 +308,65 @@ function smoothZoom(targetPosition, duration = 1.5, lookAtTarget = null) {
     const elapsedTime = (performance.now() - startTime) / 1000;
     const t = Math.min(elapsedTime / duration, 1);
     camera.position.lerpVectors(startPosition, targetPosition, t);
-
-    // Si un objectif est passé pour le zoom, la caméra doit toujours regarder cet objectif
     if (lookAtTarget) {
       camera.lookAt(lookAtTarget);
     }
-
     renderer.render(scene, camera);
-
     if (t < 1) {
       requestAnimationFrame(animateZoom);
     }
   }
-
   animateZoom();
 }
+function returnToSaturn() {
+  if (!isTitanClicked) return;
+  // Effectuer le zoom inverse pour revenir à la position de départ
+  smoothZoom(originalCameraPosition, 1.5, saturn.position); // Centrer sur Saturne après le zoom inverse
+  camera.quaternion.copy(originalCameraQuaternion);
 
+  // Afficher les bonnes descriptions et boutons
+  titanDescription.classList.add("hidden");
+  returnButton.classList.add("hidden");
+  saturnDescription.classList.remove("hidden");
+
+  // Réinitialiser l'état
+  isTitanClicked = false;
+}
+
+function disableScroll() {
+  document.body.style.overflow = 'hidden';
+  document.body.style.pointerEvents = 'none'; 
+}
+
+function enableScroll() {
+  document.body.style.overflow = '';
+  document.body.style.pointerEvents = ''; 
+}
+
+galaxyButton.querySelector('button').addEventListener('click', () => {
+  if (!saturnTravelStarted) {
+    travelToSaturn();
+    saturnTravelStarted = true;
+  }
+  const targetScrollY = (0.61 * (document.body.scrollHeight - window.innerHeight)) + 1;
+  document.documentElement.scrollTop = targetScrollY;
+  saturnDescription.classList.remove('hidden');
+  galaxyButton.classList.add('hidden');
+});
+
+window.addEventListener('mousemove', (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+function checkMouseHover() {
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObject(titan);
+  isTitanHovered = intersects.length > 0;
+}
+
+//clique sur titan
 window.addEventListener("click", (event) => {
+  if (isTitanClicked) return;
   const mouse = new THREE.Vector2(
     (event.clientX / window.innerWidth) * 2 - 1,
     -(event.clientY / window.innerHeight) * 2 + 1
@@ -388,7 +382,6 @@ window.addEventListener("click", (event) => {
       saturn.position,
       titan.position
     ).normalize();
-
     const distanceFromTitan = 20;
     const verticalOffset = 3;
     const horizontalOffset = 8;
@@ -401,27 +394,11 @@ window.addEventListener("click", (event) => {
 
     smoothZoom(targetPosition, 1.2, titan.position); // Zoom et centrage sur Titan
     isTitanClicked = true;
-    const returnButton = document.getElementById("return-button");
     returnButton.classList.remove("hidden");
     titanDescription.classList.remove('hidden');
     saturnDescription.classList.add('hidden');
   }
 });
-
-function returnToSaturn() {
-  if (!isTitanClicked) return;
-  // Effectuer le zoom inverse pour revenir à la position de départ
-  smoothZoom(originalCameraPosition, 1.5, saturn.position); // Centrer sur Saturne après le zoom inverse
-  camera.quaternion.copy(originalCameraQuaternion);
-
-  // Afficher les bonnes descriptions et boutons
-  titanDescription.classList.add("hidden");
-  returnButton.classList.add("hidden");
-  saturnDescription.classList.remove("hidden");
-
-  // Réinitialiser l'état
-  isTitanClicked = false;
-}
 
 returnButton.addEventListener("click", returnToSaturn);
 
